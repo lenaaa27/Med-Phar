@@ -14,6 +14,7 @@ create table Medecin (
     date_naissance date,
     adresse_email varchar(50),
     mot_de_passe varchar(50),
+    specialite varchar(100),
     id_adresse int,
     FOREIGN KEY (id_adresse) REFERENCES adresse_cabinet(id)
     );
@@ -30,165 +31,147 @@ create table Patient(
     allergie varchar(500),
     activite_metier int,
     risque_metier int, 
-    activite_quotidienne int
+    activite_quotidienne int,
+    qualite_alimentation int,
     );
     
 create table Medicament (
-	CIS int primary key,
-    nom varchar(50)
+	CODE_CIS int primary key,
+    denomination varchar(100),
+    forme_pharmaceutique varchar(100),
+    voie_administration varchar(100),
+    statut_administration varchar(100),
+    etat_commercialisation varchar(100),
+    statutbdm varchar(50),
+    titulaires varchar(100),
+    surveillance_renforce varchar(100),
+    libelle_presentation varchar(500),
+    agrement_collectivite varchar(100),
+    denomination_substance varchar(100),
+    dosage varchar(50),
+    nature_composant varchar(100),
+    libelle_generique varchar(500),
+    type_generique varchar(50),
+    condition_prescription varchar (500)
     );
-    
+create table Consultation (
+    id int primary key,
+    id_medecin int,
+    id_patient int, 
+    id_maladie int, 
+    foreign key (id_medecin) references Medecin(id),
+    foreign key (id_patient) references Patient(id),
+    foreign key (id_maladie) references Maladie(id)
+)   
 create table Maladie (
 	id int primary key, 
     symptome varchar(500),
-    diagnostic varchar(500),
+    nom varchar(500),
     debut_prise date,
     fin_prise date,
+    maladie_correle varchar(500),
     id_medicament int,
     foreign key (id_medicament) references Medicament(CIS)
     );  
     
-create table consultation (
-	id int primary key, 
-    id_medecin int,
+create table Risque(
+    id int primary key,
+    symptome varchar(50),
+    debut date,
+    fin date, 
+    cause varchar(100),
+    hereditaire int,
     id_patient int,
-    id_maladie int, 
-    foreign key (id_maladie) references Maladie(id),
-    foreign key (id_medecin) references Medecin(id),
     foreign key (id_patient) references Patient(id)
-    );
+)
 
+create table Prescription(
+    id int primary key,
+    id_maladie int,
+    id_risque int,
+    code_cis int,
+    foreign key (id_maladie) references Maladie(id),
+    foreign key (id_risque) references Risque(id),
+    foreign key (code_cis) references Medicament(CODE_CIS)
+)
 
--- Créer le déclencheur
+create table Effet_secondaire(
+    id int primary key,
+    nom varchar(50),
+    durée varchar(50),
+    frequence varchar(100)
+)
 
-alter table Patient 
-add constraint activite_metier check ( activite_metier between 0 and 5 );
+create table Reaction(
+    id int primary key,
+    code_cis int, 
+    id_patient int,
+    id_effet_secondaire int, 
+    foreign key (code_cis) references Medicament(CODE_CIS),
+    foreign key (id_patient) references Patient(id),
+    foreign key (id_effet_secondaire) references Effet_secondaire(id)
+)
 
-alter table Patient 
-add constraint activite_quotidienne check ( activite_quotidienne between 0 and 5 );
+INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays)
+VALUES 
+(1, 123, 'Rue de la Paix', 'Paris', 'Paris', 'France'),
+(2, 456, 'Boulevard des Roses', 'Lyon', 'Rhône', 'France'),
+(3, 789, 'Avenue du Soleil', 'Marseille', 'Bouches-du-Rhône', 'France');
 
-alter table Patient 
-add constraint risque_metier check ( risque_metier between 0 and 5 );
+INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, specialite, id_adresse)
+VALUES 
+(1, 'Jean', 'Dupont', '1980-05-15', 'jean.dupont@example.com', 'motdepasse123', 'Cardiologue', 1),
+(2, 'Marie', 'Martin', '1975-10-20', 'marie.martin@example.com', 'mdp456', 'Pédiatre', 2),
+(3, 'Luc', 'Bernard', '1988-03-08', 'luc.bernard@example.com', 'mdp789', 'Dermatologue', 3);
 
--- Créer le déclencheur
+INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne, qualite_alimentation)
+VALUES 
+(1, 'Alice', 'Dubois', '1990-03-25', 'F', 'Pilule', 60, 1.65, 'Penicilline', 1, 0, 2, 3),
+(2, 'Thomas', 'Lefevre', '1985-08-12', 'M', 'Aucune', 80, 1.8, NULL, 2, 1, 3, 2),
+(3, 'Sophie', 'Moreau', '1976-11-08', 'F', 'DIU', 65, 1.7, 'Acariens', 3, 0, 1, 2),
+(4, 'Pierre', 'Girard', '1992-07-31', 'M', 'Aucune', 70, 1.75, 'Aucune', 2, 1, 2, 1),
+(5, 'Camille', 'Andre', '1983-04-17', 'F', 'Aucune', 55, 1.6, 'Aucune', 1, 0, 2, 3),
+(6, 'Nicolas', 'Roux', '1995-09-22', 'M', 'Pilule', 75, 1.78, 'Aucune', 3, 1, 3, 2),
+(7, 'Emma', 'Martin', '1979-12-04', 'F', 'Implant', 68, 1.68, 'Aucune', 2, 1, 3, 3),
+(8, 'Julien', 'Leroy', '1988-02-19', 'M', 'Aucune', 82, 1.85, 'Noix de cajou', 1, 0, 2, 1);
 
-CREATE or replace TRIGGER check_date_fin
-BEFORE INSERT ON Maladie
-FOR EACH ROW
-BEGIN
-    IF :NEW.fin_prise < :NEW.debut_prise THEN
-        RAISE_APPLICATION_ERROR(-20002,'La date de fin ne peut pas être antérieure à la date de début');
-    END IF;
-END;
-/
--- Insertion dans la table adresse_cabinet
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(1, 123, 'Rue de la Santé', 'Paris', 'Paris', 'France');
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(2, 456, 'Avenue des Médecins', 'Lyon', 'Rhône', 'France');
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(3, 789, 'Boulevard de la Santé', 'Marseille', 'Bouches-du-Rhône', 'France');
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(4, 101, 'Rue des Docteurs', 'Toulouse', 'Haute-Garonne', 'France');
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(5, 222, 'Avenue Pasteur', 'Lille', 'Nord', 'France');
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(6, 333, 'Place du Médecin', 'Bordeaux', 'Gironde', 'France');
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(7, 444, 'Rue de la Santé', 'Nice', 'Alpes-Maritimes', 'France');
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(8, 555, 'Avenue des Docteurs', 'Strasbourg', 'Bas-Rhin', 'France');
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(9, 666, 'Boulevard du Médecin', 'Nantes', 'Loire-Atlantique', 'France');
-INSERT INTO adresse_cabinet (id, numero, rue, ville, Departement, Pays) VALUES 
-(10, 777, 'Rue des Médecins', 'Rennes', 'Ille-et-Vilaine', 'France');
+INSERT INTO Consultation (id, id_medecin, id_patient, id_maladie)
+VALUES 
+(1, 1, 1, 1),
+(2, 2, 2, 2),
+(3, 3, 3, 3),
+(4, 1, 4, 1),
+(5, 2, 5, 2);
 
--- Insertion dans la table Medecin
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(1, 'Jean', 'Dupont', date '1980-05-15', 'jean.dupont@example.com', 'motdepasse123', 1);
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(2, 'Marie', 'Durand', date'1975-08-20', 'marie.durand@example.com', 'mdp456', 2);
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(3, 'Pierre', 'Lefevre', date'1983-11-25', 'pierre.lefevre@example.com', 'mdp789', 3);
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(4, 'Sophie', 'Martin', date'1978-03-12', 'sophie.martin@example.com', 'mdp101112', 4);
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(5, 'Philippe', 'Garcia', date'1982-07-30', 'philippe.garcia@example.com', 'mdp131415', 5);
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(6, 'Julie', 'Leroy', date'1976-09-18', 'julie.leroy@example.com', 'mdp161718', 6);
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(7, 'François', 'Fournier', date'1985-01-05', 'francois.fournier@example.com', 'mdp192021', 7);
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(8, 'Sylvie', 'Roux', date'1980-04-28', 'sylvie.roux@example.com', 'mdp222324', 8);
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(9, 'Luc', 'Morin', date'1979-06-22', 'luc.morin@example.com', 'mdp252627', 9);
-INSERT INTO Medecin (id, prenom, nom, date_naissance, adresse_email, mot_de_passe, id_adresse) VALUES 
-(10, 'Céline', 'Roy', date'1984-08-17', 'celine.roy@example.com', 'mdp282930', 10);
+INSERT INTO Maladie (id, symptome, nom, debut_prise, fin_prise, maladie_correle, id_medicament)
+VALUES 
+(1, 'Fièvre, douleurs musculaires', 'Grippe', '2024-01-10', '2024-01-20', NULL, 123456),
+(2, 'Éruption cutanée, démangeaisons', 'Allergie alimentaire', '2023-06-15', NULL, 'Intolérance au gluten', 789012),
+(3, 'Acné, peau sèche', 'Eczéma', '2024-04-05', NULL, NULL, 345678),
+(4, 'Douleurs articulaires, raideur', 'Arthrite', '2023-11-20', NULL, NULL, 901234),
+(5, 'Saignements, fatigue', 'Leucémie', '2024-02-28', NULL, NULL, 567890);
 
-SELECT * FROM USER_ERRORS WHERE TYPE = 'TRIGGER' AND NAME = 'CHECK_ACTIVITES_VALUES';
+INSERT INTO Risque (id, symptome, debut, fin, cause, hereditaire, id_patient)
+VALUES 
+(1, 'Hypertension artérielle', '2022-05-01', NULL, 'père', 1, 1),
+(2, 'Diabète de type 2', '2023-02-10', NULL, 'Surpoids', 1, 2),
+(3, 'Cancer du sein', '2024-04-15', NULL, 'grand-mere', 1, 3),
+(4, 'Maladies cardiovasculaires', '2023-10-02', NULL, 'Hypertension artérielle', 1, 4),
+(5, 'Obésité', '2024-03-20', NULL, 'Habitudes alimentaires', 0, 5);
 
--- Insertion dans la table Patient
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(1, 'Alice', 'Martin', date'1990-03-10', 'F', 'Pilule', 60, 1.65, 'Aucune', 3, 2, 4);
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(2, 'Paul', 'Dubois', date'1985-07-25', 'M', 'none', 80, 1.80, 'Allergie aux arachides', 4, 3, 5);
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(3, 'Camille', 'Leroy', date'1993-02-12', 'F', 'Pilule', 55, 1.70, 'Aucune', 2, 1, 3);
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(4, 'Thomas', 'Lefevre', date'1977-10-05', 'M', 'none', 70, 1.75, 'Aucune', 5, 4, 2);
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(5, 'Émilie', 'Girard', date'1988-12-20', 'F', 'Implant', 65, 1.68, 'Aucune', 3, 2, 4);
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(6, 'Vincent', 'Roux', date'1980-06-15', 'M', 'none', 90, 1.85, 'Aucune', 4, 3, 5);
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(7, 'Marie', 'Fournier', date'1995-04-02', 'F', 'Pilule', 58, 1.63, 'Aucune', 2, 1, 3);
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(8, 'Nicolas', 'Morin', date'1974-08-18', 'M', 'none', 75, 1.78, 'Allergie aux acariens', 5, 4, 2);
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(9, 'Caroline', 'Roy', date'1983-11-30', 'F', 'none', 63, 1.72, 'Aucune', 3, 2, 4);
-INSERT INTO Patient (id, prenom, nom, date_naissance, sexe, contraception, poids, taille, allergie, activite_metier, risque_metier, activite_quotidienne) VALUES 
-(10, 'Alexandre', 'Leroux', date'1979-09-07', 'M', 'none', 85, 1.80, 'Aucune', 4, 3, 5);
+INSERT INTO Prescription (id, id_maladie, id_risque, code_cis)
+VALUES 
+(1, 1, 1, 123456),
+(2, 2, 2, 789012),
+(3, 3, 3, 345678),
+(4, 4, 4, 901234),
+(5, 5, 5, 567890);
 
--- Insertion dans la table Maladie
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(1, 'Fièvre, toux', 'Grippe', date '2024-01-10', date '2024-01-20');
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(2, 'Douleurs abdominales', 'Gastrite', date'2024-02-05', date'2024-02-15');
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(3, 'Éruption cutanée, démangeaisons', 'Allergie', date'2024-03-15',date '2024-03-25');
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(4, 'Douleurs thoraciques, essoufflement', 'Infarctus du myocarde', date'2024-04-20',date '2024-05-05');
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(5, 'Maux de tête, vision floue', 'Migraine', date'2024-05-10', date'2024-05-15');
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(6, 'Fatigue, perte de poids', 'Diabète de type 2', date'2024-06-01', date'2024-06-30');
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(7, 'Crampes musculaires, faiblesse', 'Déshydratation',date '2024-07-15',date '2024-07-25');
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(8, 'Nausées, vomissements', 'Intoxication alimentaire', date'2024-08-05',date '2024-08-15');
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(9, 'Démangeaisons anales, saignements', 'Hémorroïdes',date '2024-09-10',date '2024-09-20');
-INSERT INTO Maladie (id, symptome, diagnostic, debut_prise, fin_prise) VALUES 
-(10, 'Douleurs lombaires, difficultés à uriner', 'Prostate élargie', date'2024-10-01', date'2024-10-10');
+INSERT INTO Effet_secondaire (id, nom, durée, frequence)
+VALUES 
+(1, 'Maux de tête', '1 jour', 'Fréquent'),
+(2, 'Nausées', '3 jours', 'Occasionnel'),
+(3, 'Somnolence', '2 jours', 'Occasionnel'),
+(4, 'Douleurs musculaires', '4 jours', 'Fréquent'),
+(5, 'Sécheresse de la bouche', '2 jours', 'Rare');
 
--- Insertion dans la table consultation
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(1, 1, 1, 1);
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(2, 2, 2, 2);
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(3, 3, 3, 3);
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(4, 4, 4, 4);
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(5, 5, 5, 5);
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(6, 6, 6, 6);
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(7, 7, 7, 7);
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(8, 8, 8, 8);
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(9, 9, 9, 9);
-INSERT INTO consultation (id, id_medecin, id_patient, id_maladie) VALUES 
-(10, 10, 10, 10);
